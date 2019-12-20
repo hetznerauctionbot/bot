@@ -1,0 +1,20 @@
+{
+  "name": "hetznerauctionbot-notifier",
+  "version": "1.0.0",
+  "description": "This is the code of the part responsible of interacting with the users using @HetznerAuctionServersBot account.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean-database": "[ ! -d data ] && mkdir data; rm -fr data/database.sqlite",
+    "start": "npm run preseed-cache && node index.js"
+  },
+  "author": "Sergio G. <soukron@gmbros.net>",
+  "license": "GPLv3",
+  "dependencies": {
+    "telegraf": "^3.34.1",
+    "winston": "^3.2.1"
+  },
+  "devDependencies": {
+    "jshint": "^2.11.0-rc1"
+  }
+}
