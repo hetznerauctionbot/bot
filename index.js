@@ -1,43 +1,35 @@
 // include requirements
-const telegraf = require('telegraf'),
-      winston  = require('winston');
+const messages  = require('./lib/messages'),
+      telegraf  = require('telegraf'),
+      winston   = require('winston'),
+      { start, help, setMaxPriceCmd } = require('./lib/botCommands');
 
 // configuration variables with default values
-const loglevel = process.env.LOGLEVEL || 'info',
-      telegram_key = process.env.TELEGRAM_KEY;
+const telegram_key = process.env.TELEGRAM_KEY;
 
-// initialize some components (bot, logger, etc.)
+// initialize some components (bot, winston, etc.)
 const bot = new telegraf(telegram_key);
-const logger = winston.createLogger({
-    transports: [
-        new winston.transports.Console({
-              level: loglevel,
-              handleExceptions: true,
-              format: winston.format.combine(
-                winston.format.timestamp({format: 'YYYY-MM-DD HH:mm:ss'}),
-                winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`+(info.splat!==undefined? `${info.splat}.` : '.'))
-              )
-            })
-    ]
-  });
+require('./lib/logging.js')();
 
-// start the bot
-bot.start((ctx) => ctx.reply('Welcome'));
+// welcome users on /start
+bot.start(start);
+bot.help(help);
+bot.command('maxprice', setMaxPriceCmd);
 
 // handle any incoming text
 bot.on('text', (ctx) => {
   let cmd = ctx.update.message.text;
-  let message = 'Trying to run a command? See /help for a list of all available commands.';
+  let message = messages.command_not_found;
 
   switch (cmd) {
     case '/criteria':
     case '/cpu':
-    case '/maxprice':
     case '/mincpu':
     case '/minhd':
     case '/minram':
+    case '/search':
     case '/ssd':
-      message = 'Command not implemented yet. Try again later...';
+      message = messages.command_not_found;
       break;
   }
 
@@ -45,5 +37,5 @@ bot.on('text', (ctx) => {
 });
 
 // start bot
-logger.info('Starting bot instance');
+winston.info('Starting bot instance');
 bot.launch();
