@@ -13,6 +13,7 @@
   "dependencies": {
     "telegraf": "^3.34.1",
     "telegraf-inline-menu": "^4.0.0",
+    "telegraf-session-local": "^1.0.2",
     "winston": "^3.2.1"
   },
   "devDependencies": {
