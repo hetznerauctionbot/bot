@@ -12,6 +12,7 @@
   "license": "GPLv3",
   "dependencies": {
     "telegraf": "^3.34.1",
+    "telegraf-inline-menu": "^4.0.0",
     "winston": "^3.2.1"
   },
   "devDependencies": {
