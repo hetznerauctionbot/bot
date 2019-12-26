@@ -5,15 +5,15 @@ const Telegraf           = require('telegraf'),
       winston            = require('winston');
 
 // configuration variables with default values
-const loglevel        = process.env.LOGLEVEL || 'info',
-      reply_format    = {
+const loglevel         = process.env.LOGLEVEL || 'info',
+      reply_format     = {
         parse_mode: 'Markdown',
         disable_web_page_preview: true
       },
-      reply_timeout   = process.env.REPLY_TIMEOUT || 5,   
-      session_file    = 'data/session.json',
-      telegram_key    = process.env.TELEGRAM_KEY;
-      
+      reply_timeout    = process.env.REPLY_TIMEOUT || 5,
+      session_filename = 'data/session.json',
+      telegram_key     = process.env.TELEGRAM_KEY;
+
 // initialize some components (bot, winston, etc.)
 const bot = new Telegraf(telegram_key);
 const logger = winston.createLogger({
@@ -34,21 +34,21 @@ const filters = [
   {
     'name': 'maxprice',
     'title': 'Max. Price',
-    'values': ['None', '30', '40', '50', '60', '70', '80', '90', '100', '110', '120', '130', '140', '150', '200'],
+    'values': ['Any', '30', '40', '50', '60', '70', '80', '90', '100', '110', '120', '130', '140', '150', '200'],
     'menu': new TelegrafInlineMenu('Set the max. price (excl. VAT):'),
     'joinLastRow': false
   },
   {
     'name': 'minhd',
     'title': 'Min. HD',
-    'values': ['None', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'],
+    'values': ['Any', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'],
     'menu': new TelegrafInlineMenu('Set the min. number of disks:'),
     'joinLastRow': true
   },
   {
     'name': 'minram',
     'title': 'Min. RAM',
-    'values': ['None', '2', '4', '8', '12', '16', '24', '32', '48', '64', '96', '128', '256', '512', '768'],
+    'values': ['Any', '2', '4', '8', '12', '16', '24', '32', '48', '64', '96', '128', '256', '512', '768'],
     'menu': new TelegrafInlineMenu('Set the min. RAM size in GB:'),
     'joinLastRow': true
   },
@@ -59,13 +59,14 @@ const filters = [
     'menu': new TelegrafInlineMenu('Set the preferred CPU type:'),
     'joinLastRow': false
   },
-  {
+/*   {
     'name': 'ssd',
     'title': 'SSD',
-    'values': ['I don\'t care', 'Yes', 'No'],
+    'values': ['Any', 'Yes', 'No'],
     'menu': new TelegrafInlineMenu('Set the preference for SSD disks:'),
     'joinLastRow': true
   }
+ */
 ];
 
 // settings submenu definition
@@ -134,12 +135,12 @@ menu.simpleButton('ℹ️ Help', 'help', {
     message += ' - Use /start to show the main menu at any moment.\n';
     message += ' - Use the Settings menu to set your search preferences and you ';
     message += 'will get notified for new servers matching your criteria.\n';
-    message += ' - Any message from the bot will be deleted automatically after ';
-    message += `${reply_timeout}-${2*reply_timeout} seconds in order to keep the`;
+    message += ' - Messages from the bot will be deleted automatically after ';
+    message += `some time (or when the server time expires) in order to keep the`;
     message += ' interface clean\n\n';
     message += '*IMPORTANT:* This bot is under heavy development. The ';
     message += 'search and notification features won\'t probably work yet.';
-    
+
     ctx.reply(message, reply_format)
     .then(({ message_id }) => {
       setTimeout(() => ctx.deleteMessage(message_id), reply_timeout*2*1000);
@@ -148,7 +149,7 @@ menu.simpleButton('ℹ️ Help', 'help', {
 });
 
 // set bot options (session, menu, callbacks and catch errors)
-bot.use((new TelegrafSession({ database: session_file })).middleware());
+bot.use((new TelegrafSession({ database: session_filename })).middleware());
 
 bot.use(menu.init({
   backButtonText: '⏪ Previous menu',

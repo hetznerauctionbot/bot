@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: List
+metadata: {}
+items:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      description: Keeps track of changes in the application image
+    labels:
+      app: bot
+    name: bot
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      description: Defines how to build the application
+      template.alpha.openshift.io/wait-for-ready: "true"
+    labels:
+      app: bot
+    name: bot
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: bot:latest
+    source:
+      git:
+        uri: https://github.com/hetznerauctionbot/bot.git
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: nodejs:8
+          namespace: openshift
+      type: Source
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the application server
+      template.alpha.openshift.io/wait-for-ready: "true"
+    labels:
+      app: bot
+    name: bot
+  spec:
+    replicas: 1
+    selector:
+      name: bot
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: bot
+        name: bot
+      spec:
+        containers:
+        - env:
+          - name: TELEGRAM_KEY
+            valueFrom:
+              secretKeyRef:
+                key: key
+                name: telegram-config-secret
+          image: ' '
+          name: bot
+          resources:
+            limits:
+              memory: 512Mi
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - bot
+        from:
+          kind: ImageStreamTag
+          name: bot:latest
+      type: ImageChange
+    - type: ConfigChange
