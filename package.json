@@ -1,6 +1,6 @@
 {
   "name": "hetznerauctionbot-bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This is the code of the part responsible of interacting with the users using @HetznerAuctionServersBot account.",
   "main": "index.js",
   "scripts": {
