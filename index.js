@@ -6,31 +6,30 @@ const Telegraf           = require('telegraf'),
 
 // configuration variables with default values
 const loglevel        = process.env.LOGLEVEL || 'info',
+      reply_format    = {
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true
+      },
+      reply_timeout   = process.env.REPLY_TIMEOUT || 5,   
+      session_file    = 'data/session.json',
       telegram_key    = process.env.TELEGRAM_KEY;
-      default_filters = {
-        "maxprice": "None",
-        "cputype": "Any",
-        "ssd": "I don't care",
-        "minhd": "None",
-        "minram": "None"
-      };
-
+      
 // initialize some components (bot, winston, etc.)
 const bot = new Telegraf(telegram_key);
 const logger = winston.createLogger({
-    transports: [
-        new winston.transports.Console({
-              level: loglevel,
-              handleExceptions: true,
-              format: winston.format.combine(
-                winston.format.timestamp({format: 'YYYY-MM-DD HH:mm:ss'}),
-                winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`+(info.splat!==undefined? `${info.splat}.` : '.'))
-              )
-            })
-    ]
-  });
+  transports: [
+    new winston.transports.Console({
+      level: loglevel,
+      handleExceptions: true,
+      format: winston.format.combine(
+        winston.format.timestamp({format: 'YYYY-MM-DD HH:mm:ss'}),
+        winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`+(info.splat!==undefined? `${info.splat}.` : '.'))
+      )
+    })
+  ]
+});
 
-// search filters to create submenus
+// search filters to create submenus programatically
 const filters = [
   {
     'name': 'maxprice',
@@ -64,58 +63,92 @@ const filters = [
     'name': 'ssd',
     'title': 'SSD',
     'values': ['I don\'t care', 'Yes', 'No'],
-    'menu': new TelegrafInlineMenu('Set your preference for SSD disks:'),
+    'menu': new TelegrafInlineMenu('Set the preference for SSD disks:'),
     'joinLastRow': true
   }
 ];
 
-// settings submenu
-const filtersMenu = new TelegrafInlineMenu('Set/View your search settings:');
-filtersMenu.simpleButton('📄 View current filters', 'view-filters', {
+// settings submenu definition
+const filtersMenu = new TelegrafInlineMenu('Choose an option to change your search preferences:');
+// settings -> button to see current settings
+filtersMenu.simpleButton('📄 View current filters', 'configure-filters', {
   doFunc: ctx => {
-    let message = 'This is your current filter configuration:\n';
-    ctx.session.filters.forEach(filter => {
-      //
+    let message = 'This is the current filters configuration:\n';
+    for(const [name, filter] of Object.entries(ctx.session.filters)) {
+      message += ` - *${filter[0]}*: ${filter[1]}\n`;
+    }
+    ctx.reply(message, reply_format)
+    .then(({ message_id }) => {
+      setTimeout(() => ctx.deleteMessage(message_id), reply_timeout*1000);
     });
-    ctx.reply(message);
   }
 });
+// settings -> submenus for each filter option
 filters.forEach(item => {
-  item.menu.select('set-'+item.name, item.values, {
+  // create the filter submenu
+  item.menu.select(`set-${item.name}`, item.values, {
     setFunc: (ctx, key) => {
+      // set the value in the session
       logger.debug(`${ctx.update.callback_query.from.username} sets ${item.name} => ${key}`);
-      ctx.session.filters[item.name] = key;
+      ctx.session.filters[item.name] = [item.title, key];
     },
     isSetFunc: (ctx, key) => {
-      try { return ctx.session.filters[item.name] === key; }
+      try {
+        // return (true) if user is viewing this specific value
+        return ctx.session.filters[item.name][1] === key;
+      }
       catch (error) { 
+        // initialize filters in session if error
         if (typeof ctx.session.filters === 'undefined') {
-          ctx.session.filters = default_filters;
+          ctx.session.filters = {};
+          filters.forEach(filter => {
+            ctx.session.filters[filter.name] = [filter.title, filter.values[0]];
+          });
         }
-        return false;
+        // return (true) if user is viewing this specific value after initialize
+        return ctx.session.filters[item.name][1] === key;
       }
     }
   });
+  // add the filter submenu to the settings submenu
   filtersMenu.submenu(item.title, item.name, item.menu, {joinLastRow: item.joinLastRow});
 });
 
 // main menu
-const menu = new TelegrafInlineMenu('Main Menu');
+const menu = new TelegrafInlineMenu('Choose an option:');
 menu.setCommand('start');
 menu.submenu('🔧 Filters', 'filters', filtersMenu);
 menu.simpleButton('🔍 Search now', 'search-now', {
   doFunc: ctx => {
-    ctx.reply('Searching for servers...');
+    ctx.reply('This feature is under development. Not results so far.')
+    .then(({ message_id }) => {
+      setTimeout(() => ctx.deleteMessage(message_id), reply_timeout*1000);
+    });
   },
   joinLastRow: true
 });
 menu.simpleButton('ℹ️ Help', 'help', {
   doFunc: ctx => {
-    ctx.reply('This is a helper bot for [Hetzner Auction Servers channel](https://t.me/hetznerauctionservers).\n\nUse /start to show the main menu at any moment.\n\nUse the Settings menu to set your search preferences and you will get notified for new servers matching your criteria.\n\n*IMPORTANT:* This bot is under heavy development and the features won\'t probably work yet.\n\n', { parse_mode: 'Markdown', disable_web_page_preview: true });  }
+    let message = 'This is a helper bot for [Hetzner Auction Servers channel]';
+    message += '(https://t.me/hetznerauctionservers).\n\n*INSTRUCTIONS*:\n';
+    message += ' - Use /start to show the main menu at any moment.\n';
+    message += ' - Use the Settings menu to set your search preferences and you ';
+    message += 'will get notified for new servers matching your criteria.\n';
+    message += ' - Any message from the bot will be deleted automatically after ';
+    message += `${reply_timeout}-${2*reply_timeout} seconds in order to keep the`;
+    message += ' interface clean\n\n';
+    message += '*IMPORTANT:* This bot is under heavy development. The ';
+    message += 'search and notification features won\'t probably work yet.';
+    
+    ctx.reply(message, reply_format)
+    .then(({ message_id }) => {
+      setTimeout(() => ctx.deleteMessage(message_id), reply_timeout*2*1000);
+    });
+  }
 });
 
 // set bot options (session, menu, callbacks and catch errors)
-bot.use((new TelegrafSession({ database: 'data/session.json' })).middleware());
+bot.use((new TelegrafSession({ database: session_file })).middleware());
 
 bot.use(menu.init({
   backButtonText: '⏪ Previous menu',
@@ -126,7 +159,6 @@ bot.use((ctx, next) => {
   if (ctx.callbackQuery) {
     logger.info(`Another callbackQuery happened ${ctx.callbackQuery.data.length} ${ctx.callbackQuery.data}`);
   }
-
   return next();
 });
 
